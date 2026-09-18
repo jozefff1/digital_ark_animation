@@ -10,7 +10,6 @@
     <style>
         :root {
             --text-color: #ffffff;
-            --line-width: 6px;
         }
 
         body, html {
@@ -51,8 +50,8 @@
         .brand-text {
             position: absolute;
             top: 50%;
-            left: 0;
-            right: 0;
+            left: 50%;
+            width: max-content;
             text-align: center;
             white-space: nowrap;
             color: var(--text-color);
@@ -62,12 +61,7 @@
             cursor: default;
             user-select: none;
             z-index: 10;
-            transform: translateY(-50%);
-            transition: opacity 0.8s ease,
-                        font-size 0.9s ease,
-                        left 0.9s ease,
-                        top 0.9s ease,
-                        transform 0.9s ease;
+            transform: translate(-50%, -50%);
         }
 
         .char {
@@ -103,50 +97,28 @@
             width: 100%;
             height: 100%;
             stroke: var(--text-color);
-            stroke-width: var(--line-width);
             fill: none;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
 
-        .falling-d {
-            animation: fallD 1.53s forwards cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* No animation-delay here — JS setTimeout handles the 700ms offset */
-        .falling-a {
-            animation: fallA 1.53s forwards cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes fallD {
-            0%   { opacity: 0; }
-            15%  { opacity: 1; }
-            100% { opacity: 1; }
-        }
-
-        @keyframes fallA {
-            0%   { opacity: 0; }
-            15%  { opacity: 1; }
-            100% { opacity: 1; }
-        }
-
         .bounce-d {
-            animation: bounceD 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: bounceD 0.7s ease-in-out;
         }
 
         .bounce-a {
-            animation: bounceA 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: bounceA 0.7s ease-in-out;
         }
 
         @keyframes bounceD {
             0%   { transform: scale(1)    rotate(-180deg); }
-            40%  { transform: scale(1.08) rotate(-180deg); }
+            40%  { transform: scale(1.025) rotate(-180deg); }
             100% { transform: scale(1)    rotate(-180deg); }
         }
 
         @keyframes bounceA {
             0%   { transform: scale(1);    }
-            40%  { transform: scale(1.08); }
+            40%  { transform: scale(1.025); }
             100% { transform: scale(1);    }
         }
     </style>
@@ -202,11 +174,9 @@
             logoA.className      = 'logo-container';
             logoD.style.cssText  = '';
             logoA.style.cssText  = '';
-            textContainer.style.opacity    = '1';
             textContainer.style.left       = '';
-            textContainer.style.right      = '';
+            textContainer.style.transform  = '';
             textContainer.style.textAlign  = '';
-            textContainer.style.fontSize   = '';
             textContainer.style.transition = '';
 
             await new Promise(r => setTimeout(r, 1000));
@@ -219,107 +189,107 @@
             aChar.classList.add('detached');
 
             const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+            const canvasScale = canvasRect.width / 600;
 
-            // ── 2. D: appear at text position → fall DOWN below text ─────────
-            const dRect = dChar.getBoundingClientRect();
-            const startX = dRect.left - canvasRect.left + (dRect.width  / 2);
-            const startY = dRect.top  - canvasRect.top  + (dRect.height / 2);
+            // Form the boat with eased transform motion and a gradual reveal.
+            // Each piece finishes moving before the shared settling animation.
+            async function formBoatPiece(logo, character, delay, rotation) {
+                const rect = character.getBoundingClientRect();
+                const x = (rect.left - canvasRect.left + rect.width / 2) / canvasScale - 100;
+                const y = (rect.top - canvasRect.top + rect.height / 2) / canvasScale - 100;
+                logo.style.left = '0px';
+                logo.style.top = '0px';
+                logo.style.transition = 'none';
+                const formation = logo.animate([
+                    { transform: `translate(${x}px, ${y}px) rotate(0deg)`, opacity: 0 },
+                    { opacity: 1, offset: 0.35 },
+                    { transform: `translate(200px, 360px) rotate(${rotation}deg)`, opacity: 1 }
+                ], {
+                    duration: 1400,
+                    delay,
+                    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    fill: 'both'
+                });
+                await formation.finished;
+                logo.style.left = '200px';
+                logo.style.top = '360px';
+                logo.style.transform = `rotate(${rotation}deg)`;
+                logo.style.opacity = '1';
+                formation.cancel();
+            }
 
-            logoD.style.left    = `${startX - 100}px`;
-            logoD.style.top     = `${startY - 100}px`;
-            logoD.style.opacity = '1';
-            logoD.classList.add('falling-d');
-
-            // Fall to centre-of-canvas horizontally, well below the text row
-            setTimeout(() => {
-                logoD.style.transition = 'left 0.8s cubic-bezier(0.47, 0, 0.745, 0.715), top 0.8s cubic-bezier(0.47, 0, 0.745, 0.715), transform 0.8s cubic-bezier(0.47, 0, 0.745, 0.715)';
-                logoD.style.left      = '200px';
-                logoD.style.top       = '360px';   // below text centre (300px)
-                logoD.style.transform = 'rotate(-180deg)';
-            }, 100);
-
-            // ── 3. A: appear at text position → fall DOWN and snap onto D ────
-            const aRect   = aChar.getBoundingClientRect();
-            const startXA = aRect.left - canvasRect.left + (aRect.width  / 2);
-            const startYA = aRect.top  - canvasRect.top  + (aRect.height / 2);
-
-            logoA.style.left    = `${startXA - 100}px`;
-            logoA.style.top     = `${startYA - 100}px`;
-            logoA.style.opacity = '1';
-            logoA.classList.add('falling-a');
-
-            setTimeout(() => {
-                logoA.style.transition = 'left 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                logoA.style.left = '200px';
-                logoA.style.top  = '360px';        // same as D — overlaps to form logo
-            }, 700);
+            await Promise.all([
+                formBoatPiece(logoD, dChar, 0, -180),
+                formBoatPiece(logoA, aChar, 450, 0)
+            ]);
 
             // ── 4. Settle bounce ──────────────────────────────────────────────
             setTimeout(() => {
                 logoD.classList.add('bounce-d');
                 logoA.classList.add('bounce-a');
-            }, 1600);
+            }, 100);
 
-            // ── 5. Logo slides left, text shifts right ────────────────────────
-            // 1600ms bounce start + 600ms bounce + 600ms pause = 2800ms
+            // ── 5. Boat slides left; text makes room as it approaches ─────────
+            // Both pieces have landed; settle for 700ms, then hold for 300ms.
             setTimeout(() => {
                 // Restore D and A characters in the text
                 dChar.classList.remove('detached');
                 aChar.classList.remove('detached');
 
-                // Shift text rightward to make room: 25px logo-left + 80px logo + 10px gap = 115px
-                textContainer.style.transition = 'left 0.9s cubic-bezier(0.4, 0, 0.2, 1), right 0.9s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.9s ease';
-                textContainer.style.left      = '115px';
-                textContainer.style.right     = 'auto';
+                // Preserve the exact text position before appending © so its
+                // extra width cannot recenter the name and cause a leftward jump.
+                const textLeft = textContainer.offsetLeft - textContainer.offsetWidth / 2;
+                textContainer.style.left = `${textLeft}px`;
+                textContainer.style.transform = 'translateY(-50%)';
                 textContainer.style.textAlign = 'left';
-                textContainer.style.fontSize  = '56px';
 
-                // Slide both logo elements to the left edge, shrink to inline size, and centre the group
-                // Group: 80px logo + 10px gap + ~460px text ≈ 550px → left margin ≈ 25px to centre in 600px
-                const slideEase = 'left 0.9s cubic-bezier(0.4, 0, 0.2, 1), top 0.9s cubic-bezier(0.4, 0, 0.2, 1), width 0.9s ease, height 0.9s ease';
-                logoD.style.transition = slideEase;
-                logoA.style.transition = slideEase;
-                logoD.style.left   = '25px';
-                logoD.style.top    = '260px';  // centre: 260 + 40 = 300px = text centre
-                logoD.style.width  = '80px';
-                logoD.style.height = '80px';
-                logoA.style.left   = '25px';
-                logoA.style.top    = '260px';
-                logoA.style.width  = '80px';
-                logoA.style.height = '80px';
-            }, 2800);
+                // The paths occupy 60% of their SVG box: a 140px box makes
+                // the visible boat 84px tall, slightly larger than the 72px text.
+                const slideEase = 'left 1.6s cubic-bezier(0.4, 0, 0.2, 1), top 1.6s cubic-bezier(0.4, 0, 0.2, 1), width 1.6s ease, height 1.6s ease';
+                [logoD, logoA].forEach(logo => {
+                    logo.style.transition = slideEase;
+                    logo.style.left = '-20px';
+                    logo.style.top = '230px'; // center: 230 + 70 = 300px
+                    logo.style.width = '140px';
+                    logo.style.height = '140px';
+                });
+            }, 1100);
 
-            // ── 6. Fade in "AS ©" letter by letter ───────────────────────────
-            // 2800ms slide start + 900ms slide + 300ms pause = 4000ms
+            // Begin moving the unchanged-size text as the boat nears its place.
+            setTimeout(() => {
+                textContainer.style.transition = 'left 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
+                textContainer.style.left = '115px';
+            }, 2000);
+
+            // ── 6. Fade in "AS ©" together ──────────────────────────────────
+            // Reveal the suffix during the boat slide, after the text position is fixed.
             setTimeout(() => {
                 const items = [
-                    { text: '\u00A0AS',         delay: 0, targetOpacity: '1',   extraStyle: 'transition: opacity 2s ease;' },
-                    { text: '\u00A0\u00A9',     delay: 0, targetOpacity: '0.6',
-                      extraStyle: 'font-size: 0.32em; vertical-align: super; letter-spacing: 0; font-family: sans-serif; transition: opacity 2s ease;' }
+                    { text: '\u00A0AS',         targetOpacity: '1',   extraStyle: 'transition: opacity 1.6s ease;' },
+                    { text: '\u00A0\u00A9',     targetOpacity: '0.6',
+                      extraStyle: 'font-size: 0.32em; vertical-align: super; letter-spacing: 0; font-family: sans-serif; transition: opacity 1.6s ease;' }
                 ];
 
-                items.forEach(({ text, delay, targetOpacity, extraStyle }) => {
-                    setTimeout(() => {
-                        const span = document.createElement('span');
-                        span.textContent = text;
-                        span.className   = 'char char-special';
-                        span.style.cssText  = extraStyle;
-                        span.style.opacity  = '0';
-                        textContainer.appendChild(span);
-                        requestAnimationFrame(() => requestAnimationFrame(() => {
-                            span.style.opacity = targetOpacity;
-                        }));
-                    }, delay);
+                items.forEach(({ text, targetOpacity, extraStyle }) => {
+                    const span = document.createElement('span');
+                    span.textContent = text;
+                    span.className   = 'char char-special';
+                    span.style.cssText  = extraStyle;
+                    span.style.opacity  = '0';
+                    textContainer.appendChild(span);
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        span.style.opacity = targetOpacity;
+                    }));
                 });
-            }, 4000);
+            }, 1100);
             // ── 7. Whole page becomes a link once animation is done ───────────
-            // Wait for AS + © to fully fade in (2s fade) then activate
+            // Activate after the text has settled and the suffix is visible.
             setTimeout(() => {
                 document.body.style.cursor = 'pointer';
                 document.body.addEventListener('click', () => {
                     window.open('https://digitalarkas.no', '_blank', 'noopener,noreferrer');
                 });
-            }, 6200);
+            }, 3500);
         }
 
         // Start on load
