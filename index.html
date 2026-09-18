@@ -48,6 +48,7 @@
         }
 
         .brand-text {
+            opacity: 0;
             position: absolute;
             top: 50%;
             left: 50%;
@@ -177,7 +178,16 @@
             textContainer.style.left       = '';
             textContainer.style.transform  = '';
             textContainer.style.textAlign  = '';
-            textContainer.style.transition = '';
+            textContainer.style.transition = 'none';
+            textContainer.style.opacity = '0';
+
+            const introFade = textContainer.animate(
+                [{ opacity: 0 }, { opacity: 1 }],
+                { duration: 4000, easing: 'ease-in-out', fill: 'forwards' }
+            );
+            await introFade.finished;
+            textContainer.style.opacity = '1';
+            introFade.cancel();
 
             await new Promise(r => setTimeout(r, 1000));
 
@@ -292,8 +302,11 @@
             }, 3500);
         }
 
-        // Start on load
-        window.onload = runAnimation;
+        // Wait for the font before revealing the brand.
+        window.addEventListener('load', async () => {
+            await document.fonts.ready;
+            runAnimation();
+        });
     </script>
 </body>
 </html>
